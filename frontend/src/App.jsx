@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import Products from './pages/Products'
+import ProductDetails from './pages/ProductDetails'
 import QuoteBuilder from './pages/QuoteBuilder'
 
 function App() {
@@ -21,6 +22,11 @@ function App() {
         <Route
           path="/products"
           element={<Products />}
+        />
+
+        <Route
+          path="/products/:slug"
+          element={<ProductDetails />}
         />
 
         <Route
