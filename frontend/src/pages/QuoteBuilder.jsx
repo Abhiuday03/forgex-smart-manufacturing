@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import products from '../data/products'
+import { submitQuote } from '../api/quoteApi'
 
 function QuoteBuilder() {
 
@@ -28,6 +29,8 @@ function QuoteBuilder() {
   const [requirements, setRequirements] = useState('')
   const [fileName, setFileName] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   const selectedProduct = useMemo(() => {
     return products.find(
@@ -86,13 +89,38 @@ function QuoteBuilder() {
   }, [selectedProduct, quantity])
 
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
+  event.preventDefault()
 
-    event.preventDefault()
+  setSubmitting(true)
+  setError('')
+
+  try {
+    const quoteData = {
+      product: selectedProduct?.name || '',
+      quantity: Number(quantity),
+      application,
+      company,
+      name,
+      email,
+      phone,
+      requirements,
+      fileName,
+    }
+
+    await submitQuote(quoteData)
 
     setSubmitted(true)
+  } catch (error) {
+    console.error('Quote submission failed:', error)
 
+    setError(
+      'Unable to submit your quote request. Please make sure the backend server is running.'
+    )
+  } finally {
+    setSubmitting(false)
   }
+}
 
 
   if (submitted) {
@@ -486,13 +514,21 @@ function QuoteBuilder() {
 
             {/* Submit */}
 
-            <button
-              type="submit"
-              className="w-full bg-white text-black py-4 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-neutral-200 transition"
-            >
-              Submit RFQ
-              <ArrowRight size={18} />
-            </button>
+            {error && (
+  <div className="border border-red-500/20 bg-red-500/10 rounded-lg px-4 py-3 text-sm text-red-300">
+    {error}
+  </div>
+)}
+
+<button
+  type="submit"
+  disabled={submitting}
+  className="w-full bg-white text-black py-4 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-neutral-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {submitting ? 'Submitting...' : 'Submit RFQ'}
+
+  {!submitting && <ArrowRight size={18} />}
+</button>
 
           </div>
 
