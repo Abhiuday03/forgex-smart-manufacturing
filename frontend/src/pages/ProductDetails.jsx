@@ -1,41 +1,101 @@
-import { ArrowLeft, ArrowUpRight, CheckCircle2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+} from 'lucide-react'
+
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
-import products from '../data/products'
+import { getProductBySlug } from '../api/productApi'
 
 function ProductDetails() {
-
   const { slug } = useParams()
 
-  const product = products.find(
-    (item) => item.slug === slug
-  )
+  const [product, setProduct] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    async function loadProduct() {
+      try {
+        const data = await getProductBySlug(slug)
+
+        setProduct(data)
+      } catch (error) {
+        console.error('Failed to load product:', error)
+
+        setError(
+          'Unable to load this product. Please make sure the backend server is running.'
+        )
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProduct()
+  }, [slug])
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-neutral-950 text-white px-6 py-24">
+
+        <div className="max-w-7xl mx-auto">
+
+          <p className="text-neutral-400">
+            Loading product...
+          </p>
+
+        </div>
+
+      </main>
+    )
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-neutral-950 text-white px-6 py-24">
+
+        <div className="max-w-7xl mx-auto">
+
+          <div className="border border-red-500/20 bg-red-500/10 rounded-xl p-6">
+
+            <p className="text-red-300">
+              {error}
+            </p>
+
+            <Link
+              to="/products"
+              className="inline-flex items-center gap-2 mt-6 text-sm text-white underline"
+            >
+              <ArrowLeft size={16} />
+              Back to products
+            </Link>
+
+          </div>
+
+        </div>
+
+      </main>
+    )
+  }
 
   if (!product) {
     return (
-      <main className="min-h-screen bg-neutral-950 text-white pt-32 pb-24">
+      <main className="min-h-screen bg-neutral-950 text-white px-6 py-24">
 
-        <div className="max-w-4xl mx-auto px-6 text-center">
+        <div className="max-w-7xl mx-auto">
 
-          <p className="text-xs uppercase tracking-[0.3em] text-neutral-500">
-            ForgeX Catalogue
-          </p>
-
-          <h1 className="text-4xl md:text-5xl font-bold mt-4">
-            Product Not Found
+          <h1 className="text-3xl font-semibold">
+            Product not found
           </h1>
-
-          <p className="text-neutral-400 mt-4">
-            The product you are looking for does not exist
-            or may have been removed.
-          </p>
 
           <Link
             to="/products"
-            className="inline-flex items-center gap-2 mt-8 bg-white text-black px-6 py-3 rounded-lg font-semibold hover:bg-neutral-200 transition"
+            className="inline-flex items-center gap-2 mt-6 text-sm text-white underline"
           >
-            <ArrowLeft size={18} />
-            Back to Products
+            <ArrowLeft size={16} />
+            Back to products
           </Link>
 
         </div>
@@ -44,111 +104,158 @@ function ProductDetails() {
     )
   }
 
+  const applications = product.applications
+    ? product.applications
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : []
+
+  const industries = product.industries
+    ? product.industries
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : []
+
   return (
     <main className="min-h-screen bg-neutral-950 text-white pt-32 pb-24">
 
       <div className="max-w-7xl mx-auto px-6">
 
-        {/* Back Button */}
+        {/* Back */}
 
         <Link
           to="/products"
           className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition"
         >
           <ArrowLeft size={16} />
-          Back to Catalogue
+          Back to products
         </Link>
 
 
         {/* Product Header */}
 
-        <section className="mt-10 grid lg:grid-cols-2 gap-16">
+        <section className="mt-10 max-w-4xl">
 
-          {/* Left Side */}
+          <p className="text-xs uppercase tracking-[0.3em] text-neutral-500">
+            {product.category}
+          </p>
 
-          <div>
+          <h1 className="text-5xl md:text-6xl font-bold mt-4">
+            {product.name}
+          </h1>
 
-            <p className="text-xs uppercase tracking-[0.3em] text-neutral-500">
-              {product.category}
+          <p className="text-xl text-neutral-400 mt-6 leading-relaxed">
+            {product.shortDescription}
+          </p>
+
+        </section>
+
+
+        {/* Main Content */}
+
+        <section className="grid lg:grid-cols-3 gap-6 mt-16">
+
+          {/* Description */}
+
+          <div className="lg:col-span-2 border border-white/10 rounded-2xl p-8 bg-white/[0.03]">
+
+            <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
+              Product Overview
             </p>
 
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight mt-4">
-              {product.name}
-            </h1>
+            <h2 className="text-2xl font-semibold mt-4">
+              Engineered for demanding applications
+            </h2>
 
-            <p className="text-xl text-neutral-400 leading-relaxed mt-8">
+            <p className="text-neutral-400 mt-5 leading-relaxed">
               {product.description}
             </p>
-
-            <div className="mt-10 flex flex-col sm:flex-row gap-4">
-
-              <Link
-                to={`/quote?product=${product.slug}`}
-                className="inline-flex items-center justify-center gap-2 bg-white text-black px-6 py-4 rounded-lg font-semibold hover:bg-neutral-200 transition"
-              >
-                Request a Quote
-                <ArrowUpRight size={18} />
-              </Link>
-
-              <a
-                href="#specifications"
-                className="inline-flex items-center justify-center border border-white/10 px-6 py-4 rounded-lg font-semibold text-neutral-300 hover:text-white hover:bg-white/5 transition"
-              >
-                View Specifications
-              </a>
-
-            </div>
 
           </div>
 
 
-          {/* Right Side — Product Summary */}
+          {/* Quote CTA */}
 
-          <div className="border border-white/10 rounded-2xl bg-white/[0.03] p-8">
+          <div className="border border-white/10 rounded-2xl p-8 bg-white/[0.03]">
 
-            <p className="text-xs uppercase tracking-[0.25em] text-neutral-500">
-              Engineering Overview
+            <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
+              Need this component?
             </p>
 
-            <div className="mt-8 space-y-6">
+            <h2 className="text-2xl font-semibold mt-4">
+              Request a Quote
+            </h2>
 
-              <div className="border-b border-white/10 pb-5">
+            <p className="text-neutral-400 mt-4 leading-relaxed">
+              Tell us your quantity and application requirements.
+              Our team can prepare a customized quotation.
+            </p>
 
-                <p className="text-xs uppercase tracking-wider text-neutral-600">
-                  Material
-                </p>
+            <Link
+              to={`/quote?product=${product.slug}`}
+              className="mt-8 inline-flex items-center justify-center gap-2 w-full bg-white text-black px-5 py-3 rounded-lg font-semibold hover:bg-neutral-200 transition"
+            >
+              Request Quote
+              <ArrowRight size={18} />
+            </Link>
 
-                <p className="text-lg text-white mt-2">
-                  {product.material}
-                </p>
+          </div>
 
-              </div>
-
-
-              <div className="border-b border-white/10 pb-5">
-
-                <p className="text-xs uppercase tracking-wider text-neutral-600">
-                  Manufacturing
-                </p>
-
-                <p className="text-lg text-white mt-2">
-                  {product.manufacturing}
-                </p>
-
-              </div>
+        </section>
 
 
-              <div>
+        {/* Specifications */}
 
-                <p className="text-xs uppercase tracking-wider text-neutral-600">
-                  Typical Lead Time
-                </p>
+        <section className="mt-16">
 
-                <p className="text-lg text-white mt-2">
-                  {product.leadTime}
-                </p>
+          <p className="text-xs uppercase tracking-[0.3em] text-neutral-500">
+            Technical Information
+          </p>
 
-              </div>
+          <h2 className="text-3xl font-semibold mt-4">
+            Specifications
+          </h2>
+
+
+          <div className="grid md:grid-cols-2 gap-5 mt-8">
+
+            <div className="border border-white/10 rounded-2xl p-6 bg-white/[0.03]">
+
+              <p className="text-xs uppercase tracking-wider text-neutral-600">
+                Material
+              </p>
+
+              <p className="text-lg text-neutral-200 mt-2">
+                {product.material || 'Not specified'}
+              </p>
+
+            </div>
+
+
+            <div className="border border-white/10 rounded-2xl p-6 bg-white/[0.03]">
+
+              <p className="text-xs uppercase tracking-wider text-neutral-600">
+                Manufacturing Process
+              </p>
+
+              <p className="text-lg text-neutral-200 mt-2">
+                {product.manufacturingProcess || 'Not specified'}
+              </p>
+
+            </div>
+
+
+            <div className="border border-white/10 rounded-2xl p-6 bg-white/[0.03]">
+
+              <p className="text-xs uppercase tracking-wider text-neutral-600">
+                Tolerance
+              </p>
+
+              <p className="text-lg text-neutral-200 mt-2">
+                {product.tolerance || 'Not specified'}
+              </p>
 
             </div>
 
@@ -159,19 +266,19 @@ function ProductDetails() {
 
         {/* Applications */}
 
-        <section className="mt-24">
+        <section className="mt-16">
 
           <p className="text-xs uppercase tracking-[0.3em] text-neutral-500">
             Applications
           </p>
 
-          <h2 className="text-3xl md:text-4xl font-bold mt-3">
-            Built for demanding industries
+          <h2 className="text-3xl font-semibold mt-4">
+            Designed for real-world use
           </h2>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
+          <div className="grid md:grid-cols-3 gap-4 mt-8">
 
-            {product.applications.map((application) => (
+            {applications.map((application) => (
 
               <div
                 key={application}
@@ -179,11 +286,11 @@ function ProductDetails() {
               >
 
                 <CheckCircle2
-                  size={20}
-                  className="text-neutral-400"
+                  size={18}
+                  className="text-neutral-400 shrink-0"
                 />
 
-                <span className="text-neutral-200">
+                <span className="text-neutral-300">
                   {application}
                 </span>
 
@@ -196,43 +303,28 @@ function ProductDetails() {
         </section>
 
 
-        {/* Specifications */}
+        {/* Industries */}
 
-        <section
-          id="specifications"
-          className="mt-24"
-        >
+        <section className="mt-16">
 
           <p className="text-xs uppercase tracking-[0.3em] text-neutral-500">
-            Technical Data
+            Industries
           </p>
 
-          <h2 className="text-3xl md:text-4xl font-bold mt-3">
-            Specifications
+          <h2 className="text-3xl font-semibold mt-4">
+            Built for industrial sectors
           </h2>
 
-          <div className="mt-8 border border-white/10 rounded-2xl overflow-hidden">
+          <div className="flex flex-wrap gap-3 mt-8">
 
-            {product.specifications.map((specification, index) => (
+            {industries.map((industry) => (
 
-              <div
-                key={specification.name}
-                className={`grid grid-cols-2 px-6 py-5 ${
-                  index !== product.specifications.length - 1
-                    ? 'border-b border-white/10'
-                    : ''
-                }`}
+              <span
+                key={industry}
+                className="border border-white/10 rounded-full px-5 py-2 text-sm text-neutral-300"
               >
-
-                <span className="text-neutral-500">
-                  {specification.name}
-                </span>
-
-                <span className="text-neutral-200 text-right">
-                  {specification.value}
-                </span>
-
-              </div>
+                {industry}
+              </span>
 
             ))}
 
@@ -243,31 +335,29 @@ function ProductDetails() {
 
         {/* Bottom CTA */}
 
-        <section className="mt-24 border border-white/10 rounded-2xl p-8 md:p-12 bg-white/[0.03]">
+        <section className="mt-20 border border-white/10 rounded-2xl p-10 md:p-14 bg-white/[0.03]">
 
           <div className="max-w-3xl">
 
             <p className="text-xs uppercase tracking-[0.3em] text-neutral-500">
-              Engineering Support
+              ForgeX Industrial Solutions
             </p>
 
-            <h2 className="text-3xl md:text-4xl font-bold mt-4">
-              Need this component for your application?
+            <h2 className="text-3xl md:text-4xl font-semibold mt-4">
+              Have a specific requirement?
             </h2>
 
-            <p className="text-neutral-400 mt-4 leading-relaxed">
-              Share your quantity, application requirements and
-              technical specifications. Our engineering team can
-              review the requirement and prepare a preliminary
-              quotation.
+            <p className="text-neutral-400 mt-5 leading-relaxed">
+              Share your quantity, application, specifications, and
+              requirements with our team.
             </p>
 
             <Link
               to={`/quote?product=${product.slug}`}
-              className="inline-flex items-center gap-2 mt-8 bg-white text-black px-6 py-3 rounded-lg font-semibold hover:bg-neutral-200 transition"
+              className="mt-8 inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-lg font-semibold hover:bg-neutral-200 transition"
             >
               Request a Quote
-              <ArrowUpRight size={18} />
+              <ArrowRight size={18} />
             </Link>
 
           </div>

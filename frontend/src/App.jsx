@@ -5,6 +5,7 @@ import Home from './pages/Home'
 import Products from './pages/Products'
 import ProductDetails from './pages/ProductDetails'
 import QuoteBuilder from './pages/QuoteBuilder'
+import AdminDashboard from './pages/AdminDashboard'
 
 function App() {
   return (
@@ -32,6 +33,11 @@ function App() {
         <Route
           path="/quote"
           element={<QuoteBuilder />}
+        />
+
+        <Route
+          path="/admin"
+          element={<AdminDashboard />}
         />
 
       </Routes>

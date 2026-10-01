@@ -10,3 +10,19 @@ export async function submitQuote(quoteData) {
 
   return response.data
 }
+
+export async function getQuotes() {
+  const response = await axios.get(
+    `${API_BASE_URL}/quotes`
+  )
+
+  return response.data
+}
+
+export async function getQuoteById(id) {
+  const response = await axios.get(
+    `${API_BASE_URL}/quotes/${id}`
+  )
+
+  return response.data
+}
