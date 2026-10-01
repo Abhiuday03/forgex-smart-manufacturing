@@ -1,319 +1,143 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  Upload,
-} from 'lucide-react'
+import { useState } from 'react'
 
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-
-import { getProducts } from '../api/productApi'
-import { submitQuote } from '../api/quoteApi'
+const API_URL = 'http://localhost:8080/api/quotes'
 
 function QuoteBuilder() {
-  const [searchParams] = useSearchParams()
+  const [form, setForm] = useState({
+    product: '',
+    quantity: '',
+    application: '',
+    company: '',
+    name: '',
+    email: '',
+    phone: '',
+    requirements: '',
+  })
 
-  const productFromUrl = searchParams.get('product')
-
-  const [products, setProducts] = useState([])
-  const [loadingProducts, setLoadingProducts] = useState(true)
-  const [productError, setProductError] = useState('')
-
-  const [productSlug, setProductSlug] = useState(productFromUrl || '')
-  const [quantity, setQuantity] = useState('')
-  const [application, setApplication] = useState('')
-  const [company, setCompany] = useState('')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [requirements, setRequirements] = useState('')
-  const [fileName, setFileName] = useState('')
-
-  const [submitted, setSubmitted] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
 
-  /*
-   * Load products from Spring Boot
-   */
-  useEffect(() => {
-    async function loadProducts() {
-      try {
-        const data = await getProducts()
+  function handleChange(event) {
+    const { name, value } = event.target
 
-        setProducts(data)
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }))
+  }
 
-        /*
-         * If a product was supplied through the URL,
-         * make sure it exists in the API response.
-         */
-        if (
-          productFromUrl &&
-          data.some((product) => product.slug === productFromUrl)
-        ) {
-          setProductSlug(productFromUrl)
-        }
-      } catch (error) {
-        console.error('Failed to load products:', error)
-
-        setProductError(
-          'Unable to load products. Please make sure the backend server is running.'
-        )
-      } finally {
-        setLoadingProducts(false)
-      }
-    }
-
-    loadProducts()
-  }, [productFromUrl])
-
-  /*
-   * Find the currently selected product
-   */
-  const selectedProduct = useMemo(() => {
-    return products.find(
-      (product) => product.slug === productSlug
-    )
-  }, [products, productSlug])
-
-  /*
-   * Convert applications from database string
-   * into an array for the dropdown.
-   */
-  const applications = useMemo(() => {
-    if (!selectedProduct?.applications) {
-      return []
-    }
-
-    return selectedProduct.applications
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean)
-  }, [selectedProduct])
-
-  /*
-   * Estimated quote
-   */
-  const estimatedQuote = useMemo(() => {
-    if (!selectedProduct || !quantity) {
-      return null
-    }
-
-    const qty = Number(quantity)
-
-    if (!qty || qty <= 0) {
-      return null
-    }
-
-    let basePrice = 1000
-
-    switch (selectedProduct.slug) {
-      case 'industrial-gear-assemblies':
-        basePrice = 1850
-        break
-
-      case 'hydraulic-valve-systems':
-        basePrice = 2400
-        break
-
-      case 'precision-shaft-components':
-        basePrice = 950
-        break
-
-      case 'structural-fastener-kits':
-        basePrice = 650
-        break
-
-      default:
-        basePrice = 1000
-    }
-
-    const subtotal = basePrice * qty
-
-    const engineeringFee = 5000
-
-    return {
-      basePrice,
-      subtotal,
-      engineeringFee,
-      total: subtotal + engineeringFee,
-    }
-  }, [selectedProduct, quantity])
-
-  /*
-   * Submit RFQ
-   */
   async function handleSubmit(event) {
     event.preventDefault()
 
-    setSubmitting(true)
+    setLoading(true)
+    setSuccess('')
     setError('')
 
     try {
-      const quoteData = {
-        product: selectedProduct?.name || '',
-        quantity: Number(quantity),
-        application,
-        company,
-        name,
-        email,
-        phone,
-        requirements,
-        fileName,
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          product: form.product,
+          quantity: Number(form.quantity),
+          application: form.application,
+          company: form.company,
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          requirements: form.requirements,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit quote request')
       }
 
-      await submitQuote(quoteData)
+      const data = await response.json()
 
-      setSubmitted(true)
-    } catch (error) {
-      console.error('Quote submission failed:', error)
+      console.log('Quote created:', data)
+
+      setSuccess(
+        'Your quote request has been submitted successfully.'
+      )
+
+      setForm({
+        product: '',
+        quantity: '',
+        application: '',
+        company: '',
+        name: '',
+        email: '',
+        phone: '',
+        requirements: '',
+      })
+    } catch (err) {
+      console.error(err)
 
       setError(
-        'Unable to submit your quote request. Please make sure the backend server is running.'
+        'Unable to submit your request. Please try again.'
       )
     } finally {
-      setSubmitting(false)
+      setLoading(false)
     }
-  }
-
-  /*
-   * Loading products
-   */
-  if (loadingProducts) {
-    return (
-      <main className="min-h-screen bg-neutral-950 text-white pt-32 pb-24">
-
-        <div className="max-w-4xl mx-auto px-6">
-
-          <p className="text-neutral-400">
-            Loading quote builder...
-          </p>
-
-        </div>
-
-      </main>
-    )
-  }
-
-  /*
-   * Product loading error
-   */
-  if (productError) {
-    return (
-      <main className="min-h-screen bg-neutral-950 text-white pt-32 pb-24">
-
-        <div className="max-w-4xl mx-auto px-6">
-
-          <div className="border border-red-500/20 bg-red-500/10 rounded-xl p-6">
-
-            <p className="text-red-300">
-              {productError}
-            </p>
-
-            <Link
-              to="/products"
-              className="inline-flex items-center gap-2 mt-6 text-sm text-white underline"
-            >
-              <ArrowLeft size={16} />
-              Back to products
-            </Link>
-
-          </div>
-
-        </div>
-
-      </main>
-    )
-  }
-
-  /*
-   * Successful submission
-   */
-  if (submitted) {
-    return (
-      <main className="min-h-screen bg-neutral-950 text-white pt-32 pb-24">
-
-        <div className="max-w-3xl mx-auto px-6">
-
-          <div className="border border-white/10 rounded-2xl p-10 md:p-14 bg-white/[0.03] text-center">
-
-            <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto">
-
-              <CheckCircle2
-                size={32}
-                className="text-white"
-              />
-
-            </div>
-
-            <h1 className="text-4xl font-bold mt-8">
-              Quote Request Submitted
-            </h1>
-
-            <p className="text-neutral-400 mt-5 leading-relaxed">
-              Thank you for your enquiry. Our team will review your
-              requirements and contact you with the quotation.
-            </p>
-
-            <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
-
-              <Link
-                to="/products"
-                className="inline-flex items-center justify-center gap-2 bg-white text-black px-6 py-3 rounded-lg font-semibold hover:bg-neutral-200 transition"
-              >
-                Browse Products
-                <ArrowRight size={18} />
-              </Link>
-
-              <Link
-                to="/"
-                className="inline-flex items-center justify-center gap-2 border border-white/10 px-6 py-3 rounded-lg font-semibold text-neutral-300 hover:text-white hover:border-white/30 transition"
-              >
-                Back Home
-              </Link>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </main>
-    )
   }
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white pt-32 pb-24">
 
-      <div className="max-w-5xl mx-auto px-6">
+      <div className="max-w-4xl mx-auto px-6">
 
         {/* Header */}
 
-        <div className="max-w-3xl">
+        <div className="max-w-2xl">
 
-          <Link
-            to="/products"
-            className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition"
-          >
-            <ArrowLeft size={16} />
-            Back to products
-          </Link>
-
-          <p className="text-xs uppercase tracking-[0.3em] text-neutral-500 mt-10">
-            ForgeX RFQ
+          <p className="text-xs uppercase tracking-[0.3em] text-neutral-500">
+            ForgeX Sales
           </p>
 
           <h1 className="text-5xl md:text-6xl font-bold mt-4">
             Request a Quote
           </h1>
 
-          <p className="text-neutral-400 mt-6 text-lg leading-relaxed">
-            Tell us what you need and our engineering team will
-            prepare a quotation based on your requirements.
+          <p className="text-neutral-400 text-lg mt-6 leading-relaxed">
+            Tell us what you need and our engineering team
+            will review your requirements.
           </p>
 
         </div>
+
+
+        {/* Success */}
+
+        {success && (
+
+          <div className="mt-10 border border-green-500/20 bg-green-500/10 rounded-xl p-5">
+
+            <p className="text-green-300">
+              {success}
+            </p>
+
+          </div>
+
+        )}
+
+
+        {/* Error */}
+
+        {error && (
+
+          <div className="mt-10 border border-red-500/20 bg-red-500/10 rounded-xl p-5">
+
+            <p className="text-red-300">
+              {error}
+            </p>
+
+          </div>
+
+        )}
 
 
         {/* Form */}
@@ -323,373 +147,201 @@ function QuoteBuilder() {
           className="mt-12 space-y-8"
         >
 
-          {/* Product Selection */}
+          {/* Product */}
 
-          <section className="border border-white/10 rounded-2xl p-7 bg-white/[0.03]">
+          <section className="border border-white/10 rounded-2xl bg-white/[0.03] p-7">
 
-            <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-              Step 01
-            </p>
-
-            <h2 className="text-2xl font-semibold mt-3">
+            <h2 className="text-xl font-semibold">
               Product Requirements
             </h2>
 
-
-            <div className="grid md:grid-cols-2 gap-6 mt-8">
-
-              {/* Product */}
+            <div className="grid md:grid-cols-2 gap-5 mt-6">
 
               <div>
 
-                <label className="block text-sm text-neutral-300 mb-2">
+                <label className="text-sm text-neutral-400">
                   Product
                 </label>
 
-                <select
-                  value={productSlug}
-                  onChange={(event) => {
-                    setProductSlug(event.target.value)
-                    setApplication('')
-                  }}
+                <input
+                  name="product"
+                  value={form.product}
+                  onChange={handleChange}
                   required
-                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 text-white outline-none focus:border-white/30"
-                >
-
-                  <option value="">
-                    Select a product
-                  </option>
-
-                  {products.map((product) => (
-
-                    <option
-                      key={product.id}
-                      value={product.slug}
-                    >
-                      {product.name}
-                    </option>
-
-                  ))}
-
-                </select>
+                  placeholder="e.g. Precision Steel Bolt"
+                  className="mt-2 w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/30"
+                />
 
               </div>
 
 
-              {/* Quantity */}
-
               <div>
 
-                <label className="block text-sm text-neutral-300 mb-2">
+                <label className="text-sm text-neutral-400">
                   Quantity
                 </label>
 
                 <input
+                  name="quantity"
                   type="number"
                   min="1"
-                  value={quantity}
-                  onChange={(event) => setQuantity(event.target.value)}
-                  placeholder="Enter quantity"
+                  value={form.quantity}
+                  onChange={handleChange}
                   required
-                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-neutral-600 outline-none focus:border-white/30"
-                />
-
-              </div>
-
-
-              {/* Application */}
-
-              <div className="md:col-span-2">
-
-                <label className="block text-sm text-neutral-300 mb-2">
-                  Application / Industry
-                </label>
-
-                <select
-                  value={application}
-                  onChange={(event) => setApplication(event.target.value)}
-                  required
-                  disabled={!selectedProduct}
-                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 text-white outline-none focus:border-white/30 disabled:opacity-50"
-                >
-
-                  <option value="">
-                    Select application
-                  </option>
-
-                  {applications.map((item) => (
-
-                    <option
-                      key={item}
-                      value={item}
-                    >
-                      {item}
-                    </option>
-
-                  ))}
-
-                </select>
-
-              </div>
-
-            </div>
-
-          </section>
-
-
-          {/* Contact Information */}
-
-          <section className="border border-white/10 rounded-2xl p-7 bg-white/[0.03]">
-
-            <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-              Step 02
-            </p>
-
-            <h2 className="text-2xl font-semibold mt-3">
-              Contact Information
-            </h2>
-
-
-            <div className="grid md:grid-cols-2 gap-6 mt-8">
-
-              {/* Company */}
-
-              <div>
-
-                <label className="block text-sm text-neutral-300 mb-2">
-                  Company
-                </label>
-
-                <input
-                  type="text"
-                  value={company}
-                  onChange={(event) => setCompany(event.target.value)}
-                  placeholder="Company name"
-                  required
-                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-neutral-600 outline-none focus:border-white/30"
-                />
-
-              </div>
-
-
-              {/* Name */}
-
-              <div>
-
-                <label className="block text-sm text-neutral-300 mb-2">
-                  Contact Name
-                </label>
-
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Your full name"
-                  required
-                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-neutral-600 outline-none focus:border-white/30"
-                />
-
-              </div>
-
-
-              {/* Email */}
-
-              <div>
-
-                <label className="block text-sm text-neutral-300 mb-2">
-                  Business Email
-                </label>
-
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="name@company.com"
-                  required
-                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-neutral-600 outline-none focus:border-white/30"
-                />
-
-              </div>
-
-
-              {/* Phone */}
-
-              <div>
-
-                <label className="block text-sm text-neutral-300 mb-2">
-                  Phone
-                </label>
-
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  placeholder="Contact number"
-                  required
-                  className="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-neutral-600 outline-none focus:border-white/30"
+                  placeholder="e.g. 500"
+                  className="mt-2 w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/30"
                 />
 
               </div>
 
             </div>
 
-          </section>
 
+            <div className="mt-5">
 
-          {/* Requirements */}
-
-          <section className="border border-white/10 rounded-2xl p-7 bg-white/[0.03]">
-
-            <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-              Step 03
-            </p>
-
-            <h2 className="text-2xl font-semibold mt-3">
-              Additional Requirements
-            </h2>
-
-
-            <div className="mt-8">
-
-              <label className="block text-sm text-neutral-300 mb-2">
-                Requirements
+              <label className="text-sm text-neutral-400">
+                Application
               </label>
 
-              <textarea
-                value={requirements}
-                onChange={(event) => setRequirements(event.target.value)}
-                placeholder="Describe dimensions, specifications, delivery requirements, certifications, or any other important details..."
-                rows="6"
-                className="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-neutral-600 outline-none focus:border-white/30 resize-none"
+              <input
+                name="application"
+                value={form.application}
+                onChange={handleChange}
+                required
+                placeholder="Where will this component be used?"
+                className="mt-2 w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/30"
               />
 
             </div>
 
 
-            {/* File */}
+            <div className="mt-5">
 
-            <div className="mt-6">
-
-              <label className="block text-sm text-neutral-300 mb-2">
-                Upload Requirement Document
+              <label className="text-sm text-neutral-400">
+                Technical Requirements
               </label>
 
-              <label className="flex items-center gap-3 border border-dashed border-white/10 rounded-lg px-4 py-4 cursor-pointer hover:border-white/30 transition">
-
-                <Upload size={18} className="text-neutral-400" />
-
-                <span className="text-sm text-neutral-400">
-                  {fileName || 'Choose a file'}
-                </span>
-
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0]
-
-                    setFileName(file ? file.name : '')
-                  }}
-                />
-
-              </label>
+              <textarea
+                name="requirements"
+                value={form.requirements}
+                onChange={handleChange}
+                rows="5"
+                placeholder="Material grade, dimensions, tolerances, certifications, delivery requirements..."
+                className="mt-2 w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/30 resize-none"
+              />
 
             </div>
 
           </section>
 
 
-          {/* Estimated Quote */}
+          {/* Company */}
 
-          {estimatedQuote && (
+          <section className="border border-white/10 rounded-2xl bg-white/[0.03] p-7">
 
-            <section className="border border-white/10 rounded-2xl p-7 bg-white/[0.03]">
+            <h2 className="text-xl font-semibold">
+              Company Information
+            </h2>
 
-              <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-                Estimated Quote
-              </p>
+            <div className="grid md:grid-cols-2 gap-5 mt-6">
 
-              <div className="grid md:grid-cols-3 gap-6 mt-6">
+              <div>
 
-                <div>
+                <label className="text-sm text-neutral-400">
+                  Company
+                </label>
 
-                  <p className="text-xs text-neutral-600 uppercase tracking-wider">
-                    Unit Price
-                  </p>
-
-                  <p className="text-xl font-semibold mt-2">
-                    ₹{estimatedQuote.basePrice.toLocaleString('en-IN')}
-                  </p>
-
-                </div>
-
-
-                <div>
-
-                  <p className="text-xs text-neutral-600 uppercase tracking-wider">
-                    Subtotal
-                  </p>
-
-                  <p className="text-xl font-semibold mt-2">
-                    ₹{estimatedQuote.subtotal.toLocaleString('en-IN')}
-                  </p>
-
-                </div>
-
-
-                <div>
-
-                  <p className="text-xs text-neutral-600 uppercase tracking-wider">
-                    Estimated Total
-                  </p>
-
-                  <p className="text-2xl font-bold mt-2">
-                    ₹{estimatedQuote.total.toLocaleString('en-IN')}
-                  </p>
-
-                </div>
+                <input
+                  name="company"
+                  value={form.company}
+                  onChange={handleChange}
+                  required
+                  placeholder="Company name"
+                  className="mt-2 w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/30"
+                />
 
               </div>
 
-              <p className="text-xs text-neutral-500 mt-6">
-                This is an indicative estimate. Final pricing may vary
-                based on specifications, quantity, material, and
-                engineering requirements.
-              </p>
 
-            </section>
+              <div>
 
-          )}
+                <label className="text-sm text-neutral-400">
+                  Your Name
+                </label>
+
+                <input
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                  placeholder="Full name"
+                  className="mt-2 w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/30"
+                />
+
+              </div>
 
 
-          {/* Error */}
+              <div>
 
-          {error && (
+                <label className="text-sm text-neutral-400">
+                  Email
+                </label>
 
-            <div className="border border-red-500/20 bg-red-500/10 rounded-lg px-4 py-3 text-sm text-red-300">
-              {error}
+                <input
+                  name="email"
+                  type="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                  placeholder="name@company.com"
+                  className="mt-2 w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/30"
+                />
+
+              </div>
+
+
+              <div>
+
+                <label className="text-sm text-neutral-400">
+                  Phone
+                </label>
+
+                <input
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleChange}
+                  required
+                  placeholder="+91 XXXXX XXXXX"
+                  className="mt-2 w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/30"
+                />
+
+              </div>
+
             </div>
 
-          )}
+          </section>
 
 
           {/* Submit */}
 
-          <button
-            type="submit"
-            disabled={submitting || !selectedProduct}
-            className="w-full bg-white text-black py-4 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-neutral-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
 
-            {submitting
-              ? 'Submitting...'
-              : 'Submit RFQ'}
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-white text-black px-8 py-4 rounded-lg font-semibold hover:bg-neutral-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading
+                ? 'Submitting...'
+                : 'Submit Quote Request'}
+            </button>
 
-            {!submitting && (
-              <ArrowRight size={18} />
-            )}
+            <p className="text-sm text-neutral-500">
+              Your information will be sent securely to the
+              ForgeX sales team.
+            </p>
 
-          </button>
+          </div>
 
         </form>
 

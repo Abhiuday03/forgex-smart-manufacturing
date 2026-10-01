@@ -39,6 +39,9 @@ public class QuoteRequest {
 
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
+    private String status = "NEW";
+
     public QuoteRequest() {
     }
 
@@ -125,5 +128,13 @@ public class QuoteRequest {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

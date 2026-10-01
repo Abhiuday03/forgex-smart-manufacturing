@@ -26,4 +26,22 @@ public class QuoteRequestService {
     public List<QuoteRequest> getAllQuoteRequests() {
         return repository.findAll();
     }
+
+    public QuoteRequest updateStatus(
+            Long id,
+            String status
+    ) {
+
+        QuoteRequest quoteRequest = repository
+                .findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Quote request not found with id: " + id
+                        )
+                );
+
+        quoteRequest.setStatus(status);
+
+        return repository.save(quoteRequest);
+    }
 }

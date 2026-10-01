@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/quotes")
@@ -40,5 +41,23 @@ public class QuoteRequestController {
         return ResponseEntity.ok(
                 service.getAllQuoteRequests()
         );
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<QuoteRequest> updateStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request
+    ) {
+
+        String status = request.get("status");
+
+        if (status == null || status.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        QuoteRequest updatedQuote =
+                service.updateStatus(id, status);
+
+        return ResponseEntity.ok(updatedQuote);
     }
 }
