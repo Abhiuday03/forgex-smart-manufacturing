@@ -1,5 +1,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../auth/AuthContext'
 import {
   Activity,
   BarChart3,
@@ -42,6 +43,7 @@ const STATUS_COLORS = {
 
 function AdminDashboard() {
   const [quotes, setQuotes] = useState([])
+  const { authorization, logout } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [updatingId, setUpdatingId] = useState(null)
@@ -51,7 +53,11 @@ function AdminDashboard() {
       setLoading(true)
       setError('')
 
-      const response = await fetch(API_URL)
+      const response = await fetch(API_URL, {
+        headers: {
+          Authorization: authorization,
+        },
+      })
 
       if (!response.ok) {
         throw new Error('Could not load quote requests')
@@ -67,7 +73,7 @@ function AdminDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [authorization])
 
   useEffect(() => {
     loadQuotes()
@@ -84,6 +90,7 @@ function AdminDashboard() {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: authorization,
           },
           body: JSON.stringify({ status }),
         }
@@ -201,6 +208,13 @@ function AdminDashboard() {
               className={loading ? 'animate-spin' : ''}
             />
             Refresh Data
+          </button>
+          
+          <button
+            onClick={logout}
+            className="border border-white/10 px-5 py-3 rounded-lg text-sm font-semibold hover:bg-white/10 transition"
+          >
+            Log Out
           </button>
         </header>
 
